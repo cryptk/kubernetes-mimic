@@ -162,9 +162,9 @@ func (whsvr *WebhookServer) serve(w http.ResponseWriter, r *http.Request) {
 				Message: err.Error(),
 			},
 		}
+	} else {
+		admissionResponse = whsvr.mutate(&ar)
 	}
-
-	admissionResponse = whsvr.mutate(&ar)
 
 	admissionReview := admissionv1.AdmissionReview{
 		TypeMeta: metav1.TypeMeta{

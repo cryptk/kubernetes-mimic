@@ -67,7 +67,9 @@ func main() {
 
 	go func() {
 		if err := whsrvr.server.ListenAndServeTLS("", ""); err != nil {
-			log.WithError(err).Fatal("failed to listen and serve webhook server")
+			if err != http.ErrServerClosed {
+				log.WithError(err).Fatal("failed to listen and serve webhook server")
+			}
 		}
 		log.WithField("port", viper.GetInt("listenport")).Info("Webhook Server listening")
 	}()
@@ -78,7 +80,10 @@ func main() {
 	<-signalChan
 
 	log.Info("Got OS shutdown signal, shutting down webhook server gracefully...")
-	whsrvr.server.Shutdown(context.Background())
+	err := whsrvr.server.Shutdown(context.Background())
+	if err != nil {
+		log.WithError(err).Panic("Web server failed to shut down... lets PANIC instead!")
+	}
 }
 
 func pong(w http.ResponseWriter, r *http.Request) {
