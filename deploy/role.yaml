@@ -1,0 +1,24 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: mimic
+  namespace: mimic
+rules:
+- apiGroups:
+  - ""
+  resourceNames:
+  - mimic-certs
+  resources:
+  - secrets
+  verbs:
+  - get
+- apiGroups:
+  - ""
+  resourceNames:
+  - mimic-mirrors
+  resources:
+  - configmaps
+  verbs:
+  - get
+  - watch
+  - list

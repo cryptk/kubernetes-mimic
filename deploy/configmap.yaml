@@ -1,0 +1,8 @@
+apiVersion: v1
+data:
+  fake.server.local: mirror.server.local
+  docker.io: some.mirror.server.local/docker-mirror
+kind: ConfigMap
+metadata:
+  name: mimic-mirrors
+  namespace: mimic

@@ -1,0 +1,23 @@
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: mimic
+  labels:
+    app: mimic
+webhooks:
+- name: mimic.cryptkcoding.com
+  clientConfig:
+    service:
+      name: mimic
+      namespace: mimic
+      path: "/mutate"
+      port: 8443
+    caBundle: ${CA_BUNDLE}
+  rules:
+  - operations: ["CREATE", "UPDATE"]
+    apiGroups: [""]
+    apiVersions: ["v1"]
+    resources: ["pods"]
+  admissionReviewVersions: ["v1"]
+  failurePolicy: Ignore
+  sideEffects: None
