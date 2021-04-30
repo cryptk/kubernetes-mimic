@@ -24,7 +24,7 @@ type Client struct {
 	mirrorsConfigmap *v1.ConfigMap
 }
 
-func NewClient(namespace string, certSecretName string, mirrorsConfigMapName string) (*Client, error) {
+func NewClient(namespace string, certSecretName string, mirrorsConfigMapName string, watch bool) (*Client, error) {
 	if namespace == "" {
 		namespace = getNamespace()
 		log.WithField("namespace", namespace).Debug("Namespace not specified, Namespace discovered from environment")
@@ -47,21 +47,32 @@ func NewClient(namespace string, certSecretName string, mirrorsConfigMapName str
 	}
 
 	client.clientset = clientset
+
 	log.Info("Kubernetes ClientSet initialized")
 
 	certs, err := client.fetchCertificates()
 	if err != nil {
 		log.WithError(err).Fatal("Unable to fetch SSL Certificates from Kubernetes API")
 	}
-	log.Info("SSL Certificates retrieved from Kubernetes Secret")
+
 	client.certificates = certs
+
+	log.Info("SSL Certificates retrieved from Kubernetes Secret")
 
 	mirrorsConfigMap, err := client.fetchMirrorsConfig()
 	if err != nil {
 		log.WithError(err).Error("Failed to fetch Mirrors Config from Kubernetes API")
 	}
-	log.Info("Mirrors Config retrieved from Kubernetes ConfigMap")
+
 	client.mirrorsConfigmap = mirrorsConfigMap
+
+	log.Info("Mirrors Config retrieved from Kubernetes ConfigMap")
+
+	if watch {
+		if err := client.startWatchMirrorsConfig(); err != nil {
+			return nil, err
+		}
+	}
 
 	return client, nil
 }
@@ -106,16 +117,19 @@ func (client *Client) fetchMirrorsConfig() (*v1.ConfigMap, error) {
 	return configmap, nil
 }
 
-func (client *Client) StartWatchMirrorsConfig() error {
+func (client *Client) startWatchMirrorsConfig() error {
 	selector := fields.OneTermEqualSelector("metadata.name", client.mirrorsConfigMapName)
 	listOptions := metav1.ListOptions{
 		FieldSelector: selector.String(),
 	}
+
 	watcher, err := client.clientset.CoreV1().ConfigMaps(client.namespace).Watch(context.TODO(), listOptions)
 	if err != nil {
 		return err
 	}
+
 	go client.watchMirrorsConfig(watcher.ResultChan())
+
 	return nil
 }
 
@@ -125,11 +139,13 @@ func (client *Client) watchMirrorsConfig(c <-chan watch.Event) {
 		if !ok {
 			log.Error("Received an event for something other than a ConfigMap")
 		}
+
 		log.WithFields(log.Fields{
 			"eventType":          event.Type,
 			"configmapName":      configmap.Name,
 			"configmapNamespace": configmap.Namespace,
 		}).Debug("Event received")
+
 		client.mirrorsConfigmap = configmap
 
 		client.mirrorsCallback(&client.mirrorsConfigmap.Data)

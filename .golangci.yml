@@ -2,6 +2,8 @@ run:
   timeout: 3m
 
 linters-settings:
+  errorlint:
+    errorf: true
   funlen:
     lines: 100
     statements: 50
@@ -16,6 +18,7 @@ linters:
     - dogsled
     - dupl
     - errcheck
+    - errorlint
     - exportloopref
     - exhaustive
     - funlen
@@ -47,3 +50,4 @@ linters:
     - unused
     - varcheck
     - whitespace
+    - wsl

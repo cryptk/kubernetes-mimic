@@ -39,5 +39,6 @@ func initConfig() {
 	default:
 		log.SetLevel(log.InfoLevel)
 	}
+
 	log.SetOutput(os.Stdout)
 }

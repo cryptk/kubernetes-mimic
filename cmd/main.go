@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -21,6 +22,7 @@ func main() {
 		viper.GetString("namespace"),
 		viper.GetString("certSecretName"),
 		viper.GetString("mirrorsConfigMapName"),
+		viper.GetBool("watchmirrorsconfig"),
 	)
 	if err != nil {
 		log.WithError(err).Fatal("Failed to initialize the kubernetes client")
@@ -28,13 +30,6 @@ func main() {
 
 	x509KeyPair := kclient.GetCertificates()
 	mirrorsConfig := kclient.GetMirrorsConfig()
-
-	if viper.GetBool("watchmirrorsconfig") {
-		err := kclient.StartWatchMirrorsConfig()
-		if err != nil {
-			log.WithError(err).Error("Failed to watch configmaps")
-		}
-	}
 
 	whsrvr := &WebhookServer{
 		mirrorsConfig: mirrorsConfig,
@@ -56,10 +51,11 @@ func main() {
 
 	go func() {
 		if err := whsrvr.server.ListenAndServeTLS("", ""); err != nil {
-			if err != http.ErrServerClosed {
+			if !errors.Is(err, http.ErrServerClosed) {
 				log.WithError(err).Fatal("failed to listen and serve webhook server")
 			}
 		}
+
 		log.WithField("port", viper.GetInt("listenport")).Info("Webhook Server listening")
 	}()
 
@@ -69,6 +65,7 @@ func main() {
 	<-signalChan
 
 	log.Info("Got OS shutdown signal, shutting down webhook server gracefully...")
+
 	err = whsrvr.server.Shutdown(context.Background())
 	if err != nil {
 		log.WithError(err).Fatal("web server failed to shut down... lets PANIC instead!")
