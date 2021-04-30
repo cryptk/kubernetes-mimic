@@ -15,15 +15,9 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 )
 
-var (
-	runtimeScheme = runtime.NewScheme()
-	codecs        = serializer.NewCodecFactory(runtimeScheme)
-	deserializer  = codecs.UniversalDeserializer()
-)
-
 type WebhookServer struct {
-	mirrorsConfig *map[string]string
 	server        *http.Server
+	mirrorsConfig *map[string]string
 }
 
 type patchOperation struct {
@@ -45,21 +39,26 @@ func (whsvr *WebhookServer) generatePatch(index int, container corev1.Container,
 			Value: newImage,
 		},
 	}
+
 	return patch
 }
 
 func (whsvr *WebhookServer) updateMirrorsConfig(newconfig *map[string]string) {
 	log.Debug("Callback called, updating mirrors config")
+
 	whsvr.mirrorsConfig = newconfig
 }
 
 func (whsvr *WebhookServer) mutate(ar *admissionv1.AdmissionReview) *admissionv1.AdmissionResponse {
 	log.Debugf("Mutate called: %v", whsvr.mirrorsConfig)
-	req := ar.Request
+
 	var pod corev1.Pod
+
+	req := ar.Request
 
 	if err := json.Unmarshal(req.Object.Raw, &pod); err != nil {
 		log.WithError(err).Error("Could not unmarshal raw object")
+
 		return &admissionv1.AdmissionResponse{
 			Allowed:  true,
 			Warnings: []string{err.Error()},
@@ -121,12 +120,14 @@ func (whsvr *WebhookServer) mutate(ar *admissionv1.AdmissionReview) *admissionv1
 	patchBytes, err := json.Marshal(patches)
 	if err != nil {
 		log.Info("Failed to marshal JSON for patch response")
+
 		return &admissionv1.AdmissionResponse{
 			Allowed: true,
 		}
 	}
 
 	log.Debugf("AdmissionResponse: patch=%v\n", string(patchBytes))
+
 	return &admissionv1.AdmissionResponse{
 		Allowed: true,
 		Patch:   patchBytes,
@@ -137,37 +138,50 @@ func (whsvr *WebhookServer) mutate(ar *admissionv1.AdmissionReview) *admissionv1
 	}
 }
 
-// Serve method for webhook server
+// Serve method for webhook server.
 func (whsvr *WebhookServer) serve(w http.ResponseWriter, r *http.Request) {
 	var body []byte
+
+	var (
+		runtimeScheme = runtime.NewScheme()
+		codecs        = serializer.NewCodecFactory(runtimeScheme)
+		deserializer  = codecs.UniversalDeserializer()
+	)
+
 	if r.Body == nil {
 		log.Error("Request body is nil")
 		return
 	}
+
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		log.WithError(err).Error("Request body read failure")
 		return
 	}
+
 	if len(body) == 0 {
 		log.Error("empty body")
 		http.Error(w, "empty body", http.StatusBadRequest)
+
 		return
 	}
 
 	// verify the content type is accurate
-
 	if contentType := r.Header.Get("Content-Type"); contentType != "application/json" {
 		log.WithField("content-type", contentType).Error("invalid content-type, expected application/json")
 		http.Error(w, "invalid Content-Type, expect `application/json`", http.StatusUnsupportedMediaType)
+
 		return
 	}
 
 	var admissionResponse *admissionv1.AdmissionResponse
+
 	ar := admissionv1.AdmissionReview{}
+
 	_, _, err = deserializer.Decode(body, nil, &ar)
 	if err != nil {
-		log.Errorf("Can't decode body: %v", err)
+		log.WithError(err).Error("can't decode body")
+
 		admissionResponse = &admissionv1.AdmissionResponse{
 			Result: &metav1.Status{
 				Message: err.Error(),
@@ -198,6 +212,7 @@ func (whsvr *WebhookServer) serve(w http.ResponseWriter, r *http.Request) {
 	}
 
 	log.Info("Ready to write response ...")
+
 	if _, err := w.Write(resp); err != nil {
 		log.WithError(err).Error("Can't write response")
 		http.Error(w, fmt.Sprintf("could not write response: %v", err), http.StatusInternalServerError)

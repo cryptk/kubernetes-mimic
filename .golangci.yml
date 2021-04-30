@@ -2,6 +2,8 @@ run:
   timeout: 3m
 
 linters-settings:
+  errorlint:
+    errorf: true
   funlen:
     lines: 100
     statements: 50
@@ -16,13 +18,19 @@ linters:
     - dogsled
     - dupl
     - errcheck
-    - exportloopref
+    - errorlint
     - exhaustive
+    - exportloopref
+    - forcetypeassert
     - funlen
+    - gci
+    - gochecknoglobals
     - gochecknoinits
     - goconst
     - gocritic
     - gocyclo
+    - godot
+    - godox
     - gofmt
     - goimports
     - golint
@@ -31,12 +39,16 @@ linters:
     - gosec
     - gosimple
     - govet
+    - ifshort
     - ineffassign
     - lll
     - misspell
     - nakedret
+    - nilerr
     - noctx
     - nolintlint
+    - predeclared
+    - revive
     - rowserrcheck
     - staticcheck
     - structcheck
@@ -46,4 +58,7 @@ linters:
     - unparam
     - unused
     - varcheck
+    - wastedassign
     - whitespace
+    - wrapcheck
+    - wsl
