@@ -15,12 +15,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 )
 
-var (
-	runtimeScheme = runtime.NewScheme()
-	codecs        = serializer.NewCodecFactory(runtimeScheme)
-	deserializer  = codecs.UniversalDeserializer()
-)
-
 type WebhookServer struct {
 	server        *http.Server
 	mirrorsConfig *map[string]string
@@ -144,9 +138,15 @@ func (whsvr *WebhookServer) mutate(ar *admissionv1.AdmissionReview) *admissionv1
 	}
 }
 
-// Serve method for webhook server
+// Serve method for webhook server.
 func (whsvr *WebhookServer) serve(w http.ResponseWriter, r *http.Request) {
 	var body []byte
+
+	var (
+		runtimeScheme = runtime.NewScheme()
+		codecs        = serializer.NewCodecFactory(runtimeScheme)
+		deserializer  = codecs.UniversalDeserializer()
+	)
 
 	if r.Body == nil {
 		log.Error("Request body is nil")

@@ -3,6 +3,7 @@ package kubernetes
 import (
 	"context"
 	"crypto/tls"
+	"fmt"
 
 	log "github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
@@ -38,12 +39,12 @@ func NewClient(namespace string, certSecretName string, mirrorsConfigMapName str
 
 	config, err := rest.InClusterConfig()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to generate InClusterConfig: %w", err)
 	}
 
 	clientset, err := kubernetes.NewForConfig(config)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create kubernetes clientset: %w", err)
 	}
 
 	client.clientset = clientset
@@ -90,12 +91,12 @@ func (client *Client) fetchCertificates() (tls.Certificate, error) {
 		client.certSecretName,
 		metav1.GetOptions{})
 	if err != nil {
-		return tls.Certificate{}, err
+		return tls.Certificate{}, fmt.Errorf("failed to retrieve TLS certificates from Kubernetes API: %w", err)
 	}
 
 	pair, err := tls.X509KeyPair(certs.Data["cert.pem"], certs.Data["key.pem"])
 	if err != nil {
-		return tls.Certificate{}, err
+		return tls.Certificate{}, fmt.Errorf("failed to generate X509 Key Pair from fetched certificates: %w", err)
 	}
 
 	return pair, nil
@@ -111,7 +112,7 @@ func (client *Client) fetchMirrorsConfig() (*v1.ConfigMap, error) {
 		metav1.GetOptions{},
 	)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to retrieve configmap from Kubernetes API: %w", err)
 	}
 
 	return configmap, nil
@@ -125,7 +126,7 @@ func (client *Client) startWatchMirrorsConfig() error {
 
 	watcher, err := client.clientset.CoreV1().ConfigMaps(client.namespace).Watch(context.TODO(), listOptions)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create watch on kubernetes configmap: %w", err)
 	}
 
 	go client.watchMirrorsConfig(watcher.ResultChan())

@@ -19,13 +19,18 @@ linters:
     - dupl
     - errcheck
     - errorlint
-    - exportloopref
     - exhaustive
+    - exportloopref
+    - forcetypeassert
     - funlen
+    - gci
+    - gochecknoglobals
     - gochecknoinits
     - goconst
     - gocritic
     - gocyclo
+    - godot
+    - godox
     - gofmt
     - goimports
     - golint
@@ -34,12 +39,16 @@ linters:
     - gosec
     - gosimple
     - govet
+    - ifshort
     - ineffassign
     - lll
     - misspell
     - nakedret
+    - nilerr
     - noctx
     - nolintlint
+    - predeclared
+    - revive
     - rowserrcheck
     - staticcheck
     - structcheck
@@ -49,5 +58,7 @@ linters:
     - unparam
     - unused
     - varcheck
+    - wastedassign
     - whitespace
+    - wrapcheck
     - wsl
