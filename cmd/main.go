@@ -9,7 +9,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	kapi "github.com/cryptk/kubernetes-mimic/cmd/kubernetes"
+	kapi "github.com/cryptk/kubernetes-mimic/internal/kubernetes"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )
