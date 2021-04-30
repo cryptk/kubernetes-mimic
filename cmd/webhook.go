@@ -32,12 +32,20 @@ type patchOperation struct {
 	Value interface{} `json:"value,omitempty"`
 }
 
-func (whsvr *WebhookServer) generateImagePatch(containerNum int, origImage string, newImage string) (patch patchOperation) {
-	return patchOperation{
-		Op:    "replace",
-		Path:  fmt.Sprintf("/spec/containers/%d/image", containerNum),
-		Value: newImage,
+func (whsvr *WebhookServer) generatePatch(index int, container corev1.Container, newImage string) (patch []patchOperation) {
+	patch = []patchOperation{
+		{
+			Op:    "add",
+			Path:  fmt.Sprintf("/metadata/annotations/kubernetes-mimic.io~1%s-original-image", container.Name),
+			Value: container.Image,
+		},
+		{
+			Op:    "replace",
+			Path:  fmt.Sprintf("/spec/containers/%d/image", index),
+			Value: newImage,
+		},
 	}
+	return patch
 }
 
 func (whsvr *WebhookServer) updateMirrorsConfig(newconfig *map[string]string) {
@@ -61,16 +69,15 @@ func (whsvr *WebhookServer) mutate(ar *admissionv1.AdmissionReview) *admissionv1
 	var patches []patchOperation
 
 	for i := 0; i < len(pod.Spec.Containers); i++ {
-
-		thisImage := pod.Spec.Containers[i].Image
+		container := pod.Spec.Containers[i]
 
 		log.WithFields(log.Fields{
 			"totalContainers": len(pod.Spec.Containers),
 			"containerNumber": i,
-			"image":           thisImage,
+			"image":           container.Image,
 		}).Info("Container Image Found")
 
-		parsedImage, err := dockerparser.Parse(thisImage)
+		parsedImage, err := dockerparser.Parse(container.Image)
 		if err != nil {
 			log.WithError(err).Error("Failed to parse docker image name")
 			return nil
@@ -96,9 +103,9 @@ func (whsvr *WebhookServer) mutate(ar *admissionv1.AdmissionReview) *admissionv1
 		}
 
 		newImage := fmt.Sprintf("%s/%s", mirror, parsedImage.Name())
-		log.Infof("Mirrored image located at: %s", newImage)
+		log.WithField("image", newImage).Info("Mirrored located")
 
-		patches = append(patches, whsvr.generateImagePatch(i, thisImage, newImage))
+		patches = append(patches, whsvr.generatePatch(i, container, newImage)...)
 	}
 
 	log.WithFields(log.Fields{
@@ -133,10 +140,14 @@ func (whsvr *WebhookServer) mutate(ar *admissionv1.AdmissionReview) *admissionv1
 // Serve method for webhook server
 func (whsvr *WebhookServer) serve(w http.ResponseWriter, r *http.Request) {
 	var body []byte
-	if r.Body != nil {
-		if data, err := ioutil.ReadAll(r.Body); err == nil {
-			body = data
-		}
+	if r.Body == nil {
+		log.Error("Request body is nil")
+		return
+	}
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		log.WithError(err).Error("Request body read failure")
+		return
 	}
 	if len(body) == 0 {
 		log.Error("empty body")
@@ -145,16 +156,16 @@ func (whsvr *WebhookServer) serve(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// verify the content type is accurate
-	contentType := r.Header.Get("Content-Type")
-	if contentType != "application/json" {
-		log.Errorf("Content-Type=%s, expect application/json", contentType)
+
+	if contentType := r.Header.Get("Content-Type"); contentType != "application/json" {
+		log.WithField("content-type", contentType).Error("invalid content-type, expected application/json")
 		http.Error(w, "invalid Content-Type, expect `application/json`", http.StatusUnsupportedMediaType)
 		return
 	}
 
 	var admissionResponse *admissionv1.AdmissionResponse
 	ar := admissionv1.AdmissionReview{}
-	_, _, err := deserializer.Decode(body, nil, &ar)
+	_, _, err = deserializer.Decode(body, nil, &ar)
 	if err != nil {
 		log.Errorf("Can't decode body: %v", err)
 		admissionResponse = &admissionv1.AdmissionResponse{
@@ -170,8 +181,6 @@ func (whsvr *WebhookServer) serve(w http.ResponseWriter, r *http.Request) {
 		TypeMeta: metav1.TypeMeta{
 			Kind:       ar.Kind,
 			APIVersion: ar.APIVersion,
-			// Kind:       "AdmissionReview",
-			// APIVersion: "admission.k8s.io/v1",
 		},
 	}
 
@@ -188,7 +197,7 @@ func (whsvr *WebhookServer) serve(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, fmt.Sprintf("could not encode response: %v", err), http.StatusInternalServerError)
 	}
 
-	log.Info("Ready to write reponse ...")
+	log.Info("Ready to write response ...")
 	if _, err := w.Write(resp); err != nil {
 		log.WithError(err).Error("Can't write response")
 		http.Error(w, fmt.Sprintf("could not write response: %v", err), http.StatusInternalServerError)

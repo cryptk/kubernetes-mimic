@@ -67,41 +67,34 @@ func generateCerts() {
 }
 
 // Deploy Mimic into a Minikube cluster.  Assumes that
-func MinikubeDeploy() error {
+func MKDeploy() error {
 	fmt.Println("[Minikube Deploy] Starting")
-	// tag := fmt.Sprint(time.Now().Unix())
 	mg.Deps(ensureMinikube)
-	// fmt.Printf("[Minikube Deploy] Sending mimic:%s to minikube\n", tag)
-	// if err := sh.Run("minikube", "image", "load", fmt.Sprintf("mimic:%s", tag)); err != nil {
-	// 	return err
-	// }
+
 	fmt.Println("[Minikube Deploy] Deploying Kubernetes resources")
 	if err := sh.Run("minikube", "kubectl", "--", "apply", "-f", "./deploy/namespace.yaml"); err != nil {
 		return err
 	}
 	mg.Deps(generateCerts)
 	sh.Run("minikube", "kubectl", "--", "apply", "-f", "./deploy")
-	// fmt.Printf("[Minikube Deploy] Patching deployment to mimic:%s\n", tag)
-	// sh.Run("minikube", "kubectl", "--", "-n", "mimic", "set", "image", "deployment/mimic", fmt.Sprintf("mimic=mimic:%s", tag))
-	// fmt.Print("Mimic is accessible at the following URL: ")
-	// sh.RunV("minikube", "service", "--namespace", "mimic", "--url", "mimic")
+
 	fmt.Println("[Minikube Deploy] Complete")
 	return nil
 }
 
 // Update Mimic into a Minikube cluster.  Assumes that
-func MinikubeUpdate() error {
+func MKUpdate() error {
 	fmt.Println("[Minikube Update] Starting")
 	tag := fmt.Sprint(time.Now().Unix())
 	mg.Deps(ensureMinikube, mg.F(ImageBuildTag, tag))
+
 	fmt.Printf("[Minikube Update] Sending mimic:%s to minikube\n", tag)
 	if err := sh.Run("minikube", "image", "load", fmt.Sprintf("mimic:%s", tag)); err != nil {
 		return err
 	}
 	fmt.Printf("[Minikube Update] Patching deployment to mimic:%s\n", tag)
 	sh.Run("minikube", "kubectl", "--", "-n", "mimic", "set", "image", "deployment/mimic", fmt.Sprintf("mimic=mimic:%s", tag))
-	// fmt.Print("Mimic is accessible at the following URL: ")
-	// sh.RunV("minikube", "service", "--namespace", "mimic", "--url", "mimic")
+
 	fmt.Println("[Minikube Update] Complete")
 	return nil
 }
