@@ -13,72 +13,71 @@ import (
 	"k8s.io/client-go/rest"
 )
 
-// type KubernetesAPI interface {
-// 	GetCertificates() tls.Certificate
-// 	GetMirrorsConfig(mirrorsConfigMapName string, namespace string)
-// 	StartWatchMirrorsConfig() error
-// }
-
-type KubernetesAPI struct {
-	Namespace            string
-	CertSecretName       string
-	MirrorsConfigMapName string
-	NewMirrorsCallback   func(*map[string]string)
+type Client struct {
+	namespace            string
+	certSecretName       string
+	mirrorsConfigMapName string
+	mirrorsCallback      func(*map[string]string)
 
 	clientset        *kubernetes.Clientset
 	certificates     tls.Certificate
 	mirrorsConfigmap *v1.ConfigMap
 }
 
-func (kapi *KubernetesAPI) Start() {
-	if kapi.Namespace == "" {
-		kapi.Namespace = getNamespace()
-		log.WithField("namespace", kapi.Namespace).Debug("Namespace not specified, Namespace discovered from environment")
+func NewClient(namespace string, certSecretName string, mirrorsConfigMapName string) (*Client, error) {
+	if namespace == "" {
+		namespace = getNamespace()
+		log.WithField("namespace", namespace).Debug("Namespace not specified, Namespace discovered from environment")
 	}
 
-	// 	kapi := kubernetesAPI{
-	// 		namespace:            namespace,
-	// 		certSecretName:       certSecretName,
-	// 		mirrorsConfigMapName: mirrorsConfigMapName,
-	// 	}
+	client := &Client{
+		namespace:            namespace,
+		certSecretName:       certSecretName,
+		mirrorsConfigMapName: mirrorsConfigMapName,
+	}
 
 	config, err := rest.InClusterConfig()
 	if err != nil {
-		log.WithError(err).Fatal("Unable to initialize InClusterConfig for Kubernetes API Client")
+		return nil, err
 	}
 
-	// creates the clientset
 	clientset, err := kubernetes.NewForConfig(config)
 	if err != nil {
-		log.WithError(err).Fatal("Failed to create Kubernetes ClientSet")
+		return nil, err
 	}
 
-	kapi.clientset = clientset
+	client.clientset = clientset
 	log.Info("Kubernetes ClientSet initialized")
 
-	certs, err := kapi.fetchCertificates()
+	certs, err := client.fetchCertificates()
 	if err != nil {
 		log.WithError(err).Fatal("Unable to fetch SSL Certificates from Kubernetes API")
 	}
 	log.Info("SSL Certificates retrieved from Kubernetes Secret")
-	kapi.certificates = certs
+	client.certificates = certs
 
-	mirrorsConfigMap, err := kapi.fetchMirrorsConfig()
+	mirrorsConfigMap, err := client.fetchMirrorsConfig()
 	if err != nil {
 		log.WithError(err).Error("Failed to fetch Mirrors Config from Kubernetes API")
 	}
 	log.Info("Mirrors Config retrieved from Kubernetes ConfigMap")
-	kapi.mirrorsConfigmap = mirrorsConfigMap
+	client.mirrorsConfigmap = mirrorsConfigMap
 
+	return client, nil
 }
 
-func (kapi *KubernetesAPI) GetCertificates() tls.Certificate {
-	return kapi.certificates
+func (client *Client) SetMirrorsCallback(cb func(*map[string]string)) {
+	client.mirrorsCallback = cb
 }
 
-func (kapi *KubernetesAPI) fetchCertificates() (tls.Certificate, error) {
+func (client *Client) GetCertificates() tls.Certificate {
+	return client.certificates
+}
 
-	certs, err := kapi.clientset.CoreV1().Secrets(kapi.Namespace).Get(context.TODO(), kapi.CertSecretName, metav1.GetOptions{})
+func (client *Client) fetchCertificates() (tls.Certificate, error) {
+	certs, err := client.clientset.CoreV1().Secrets(client.namespace).Get(context.TODO(),
+		client.certSecretName,
+		metav1.GetOptions{})
 	if err != nil {
 		return tls.Certificate{}, err
 	}
@@ -91,12 +90,15 @@ func (kapi *KubernetesAPI) fetchCertificates() (tls.Certificate, error) {
 	return pair, nil
 }
 
-func (kapi *KubernetesAPI) GetMirrorsConfig() *map[string]string {
-	return &kapi.mirrorsConfigmap.Data
+func (client *Client) GetMirrorsConfig() *map[string]string {
+	return &client.mirrorsConfigmap.Data
 }
 
-func (kapi *KubernetesAPI) fetchMirrorsConfig() (*v1.ConfigMap, error) {
-	configmap, err := kapi.clientset.CoreV1().ConfigMaps(kapi.Namespace).Get(context.TODO(), kapi.MirrorsConfigMapName, metav1.GetOptions{})
+func (client *Client) fetchMirrorsConfig() (*v1.ConfigMap, error) {
+	configmap, err := client.clientset.CoreV1().ConfigMaps(client.namespace).Get(context.TODO(),
+		client.mirrorsConfigMapName,
+		metav1.GetOptions{},
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -104,20 +106,20 @@ func (kapi *KubernetesAPI) fetchMirrorsConfig() (*v1.ConfigMap, error) {
 	return configmap, nil
 }
 
-func (kapi *KubernetesAPI) StartWatchMirrorsConfig() error {
-	selector := fields.OneTermEqualSelector("metadata.name", kapi.MirrorsConfigMapName)
+func (client *Client) StartWatchMirrorsConfig() error {
+	selector := fields.OneTermEqualSelector("metadata.name", client.mirrorsConfigMapName)
 	listOptions := metav1.ListOptions{
 		FieldSelector: selector.String(),
 	}
-	watcher, err := kapi.clientset.CoreV1().ConfigMaps(kapi.Namespace).Watch(context.TODO(), listOptions)
+	watcher, err := client.clientset.CoreV1().ConfigMaps(client.namespace).Watch(context.TODO(), listOptions)
 	if err != nil {
 		return err
 	}
-	go kapi.watchMirrorsConfig(watcher.ResultChan())
+	go client.watchMirrorsConfig(watcher.ResultChan())
 	return nil
 }
 
-func (kapi *KubernetesAPI) watchMirrorsConfig(c <-chan watch.Event) {
+func (client *Client) watchMirrorsConfig(c <-chan watch.Event) {
 	for event := range c {
 		configmap, ok := event.Object.(*v1.ConfigMap)
 		if !ok {
@@ -128,8 +130,8 @@ func (kapi *KubernetesAPI) watchMirrorsConfig(c <-chan watch.Event) {
 			"configmapName":      configmap.Name,
 			"configmapNamespace": configmap.Namespace,
 		}).Debug("Event received")
-		kapi.mirrorsConfigmap = configmap
+		client.mirrorsConfigmap = configmap
 
-		kapi.NewMirrorsCallback(&kapi.mirrorsConfigmap.Data)
+		client.mirrorsCallback(&client.mirrorsConfigmap.Data)
 	}
 }

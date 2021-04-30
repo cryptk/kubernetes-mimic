@@ -9,7 +9,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	kapi "github.com/cryptk/kubernetes-mimic/internal/kubernetes"
+	k8s "github.com/cryptk/kubernetes-mimic/internal/kubernetes"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )
@@ -17,20 +17,20 @@ import (
 func main() {
 	initConfig()
 
-	// kubernetesAPI := kapi.NewKubernetesApi(viper.GetString("namespace"), viper.GetString("certSecretName"), viper.GetString("mirrorsConfigMapName"))
-
-	kubernetesAPI := kapi.KubernetesAPI{
-		Namespace:            viper.GetString("namespace"),
-		CertSecretName:       viper.GetString("certSecretName"),
-		MirrorsConfigMapName: viper.GetString("mirrorsConfigMapName"),
+	kclient, err := k8s.NewClient(
+		viper.GetString("namespace"),
+		viper.GetString("certSecretName"),
+		viper.GetString("mirrorsConfigMapName"),
+	)
+	if err != nil {
+		log.WithError(err).Fatal("Failed to initialize the kubernetes client")
 	}
-	kubernetesAPI.Start()
 
-	x509KeyPair := kubernetesAPI.GetCertificates()
-	mirrorsConfig := kubernetesAPI.GetMirrorsConfig()
+	x509KeyPair := kclient.GetCertificates()
+	mirrorsConfig := kclient.GetMirrorsConfig()
 
 	if viper.GetBool("watchmirrorsconfig") {
-		err := kubernetesAPI.StartWatchMirrorsConfig()
+		err := kclient.StartWatchMirrorsConfig()
 		if err != nil {
 			log.WithError(err).Error("Failed to watch configmaps")
 		}
@@ -39,26 +39,15 @@ func main() {
 	whsrvr := &WebhookServer{
 		mirrorsConfig: mirrorsConfig,
 		server: &http.Server{
-			Addr:      fmt.Sprintf("%s:%d", viper.GetString("listenhost"), viper.GetInt("listenport")),
-			TLSConfig: &tls.Config{Certificates: []tls.Certificate{x509KeyPair}},
-			// Handler:           nil,
-			// ReadTimeout:       0,
-			// ReadHeaderTimeout: 0,
-			// WriteTimeout:      0,
-			// IdleTimeout:       0,
-			// MaxHeaderBytes:    0,
-			// TLSNextProto:      map[string]func(*http.Server, *tls.Conn, http.Handler){},
-			// ConnState: func(net.Conn, http.ConnState) {
-			// },
-			// ErrorLog: &log.Logger{},
-			// BaseContext: func(net.Listener) context.Context {
-			// },
-			// ConnContext: func(ctx context.Context, c net.Conn) context.Context {
-			// },
+			Addr: fmt.Sprintf("%s:%d", viper.GetString("listenhost"), viper.GetInt("listenport")),
+			TLSConfig: &tls.Config{
+				Certificates: []tls.Certificate{x509KeyPair},
+				MinVersion:   tls.VersionTLS12,
+			},
 		},
 	}
 
-	kubernetesAPI.NewMirrorsCallback = whsrvr.updateMirrorsConfig
+	kclient.SetMirrorsCallback(whsrvr.updateMirrorsConfig)
 
 	log.Info("Webhook Server initialized")
 
@@ -80,9 +69,9 @@ func main() {
 	<-signalChan
 
 	log.Info("Got OS shutdown signal, shutting down webhook server gracefully...")
-	err := whsrvr.server.Shutdown(context.Background())
+	err = whsrvr.server.Shutdown(context.Background())
 	if err != nil {
-		log.WithError(err).Panic("Web server failed to shut down... lets PANIC instead!")
+		log.WithError(err).Fatal("web server failed to shut down... lets PANIC instead!")
 	}
 }
 
