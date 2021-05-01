@@ -23,7 +23,7 @@ func main() {
 		log.WithError(err).Fatal("Failed to initialize mirror sources")
 	}
 
-	whsrvr := &WebhookServer{
+	whsrvr := &webhookServer{
 		mirrorsConfig: sources.Mirrors(),
 		server: &http.Server{
 			Addr: fmt.Sprintf("%s:%d", viper.GetString("listenhost"), viper.GetInt("listenport")),

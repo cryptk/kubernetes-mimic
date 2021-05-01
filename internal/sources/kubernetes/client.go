@@ -13,6 +13,7 @@ import (
 	"k8s.io/client-go/rest"
 )
 
+// Client handles interactions with the kubernetes API.
 type Client struct {
 	namespace        string
 	certSecret       string
@@ -23,6 +24,7 @@ type Client struct {
 	mirrors      *v1.ConfigMap
 }
 
+// New configures a new Kubernetes Client.
 func New(namespace string, certSecretName string, mirrorsConfigMap string) (*Client, error) {
 	if namespace == "" {
 		namespace = getNamespace()
@@ -61,37 +63,30 @@ func New(namespace string, certSecretName string, mirrorsConfigMap string) (*Cli
 	return client, nil
 }
 
+// Certificates fetches TLS certificates from a kubernetes secret.
 func (client *Client) Certificates() (tls.Certificate, error) {
 	if client.certificates != nil {
 		return *client.certificates, nil
 	}
 
-	certs, err := client.fetchCertificates()
-	if err != nil {
-		return tls.Certificate{}, err
-	}
-
-	client.certificates = certs
-
-	return *client.certificates, nil
-}
-
-func (client *Client) fetchCertificates() (*tls.Certificate, error) {
 	certs, err := client.clientset.CoreV1().Secrets(client.namespace).Get(context.TODO(),
 		client.certSecret,
 		metav1.GetOptions{})
 	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve TLS certificates from Kubernetes API: %w", err)
+		return tls.Certificate{}, fmt.Errorf("failed to retrieve TLS certificates from Kubernetes API: %w", err)
 	}
 
 	pair, err := tls.X509KeyPair(certs.Data["cert.pem"], certs.Data["key.pem"])
 	if err != nil {
-		return nil, fmt.Errorf("failed to generate X509 Key Pair from fetched certificates: %w", err)
+		return tls.Certificate{}, fmt.Errorf("failed to generate X509 Key Pair from fetched certificates: %w", err)
 	}
 
-	return &pair, nil
+	client.certificates = &pair
+
+	return *client.certificates, nil
 }
 
+// Mirrors returns all mirrors which have been retrieved from the Kubernetes API.
 func (client *Client) Mirrors() map[string]string {
 	return client.mirrors.Data
 }
@@ -108,6 +103,7 @@ func (client *Client) fetchMirrorsConfig() (*v1.ConfigMap, error) {
 	return configmap, nil
 }
 
+// WatchMirrors initiates a watch on the Kubernetes ConfigMap to be notified of changes without needing an application restart.
 func (client *Client) WatchMirrors(cb func()) error {
 	selector := fields.OneTermEqualSelector("metadata.name", client.mirrorsConfigMap)
 	listOptions := metav1.ListOptions{
@@ -119,7 +115,7 @@ func (client *Client) WatchMirrors(cb func()) error {
 		return fmt.Errorf("failed to create watch on kubernetes configmap: %w", err)
 	}
 
-	// Handle the events that come in from Kubernetes in a goroutine
+	// Handle the events that come in from Kubernetes in a goroutine.
 	go func() {
 		for event := range watcher.ResultChan() {
 			configmap, ok := event.Object.(*v1.ConfigMap)
@@ -142,6 +138,7 @@ func (client *Client) WatchMirrors(cb func()) error {
 	return nil
 }
 
+// Stop gracefully ends the watch, typically in preparation for an application halt.
 func (client *Client) Stop() error {
 	return nil
 }

@@ -15,7 +15,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 )
 
-type WebhookServer struct {
+type webhookServer struct {
 	server        *http.Server
 	mirrorsConfig map[string]string
 }
@@ -26,7 +26,7 @@ type patchOperation struct {
 	Value interface{} `json:"value,omitempty"`
 }
 
-func (whsvr *WebhookServer) generatePatch(index int, container corev1.Container, newImage string) (patch []patchOperation) {
+func (whsvr *webhookServer) generatePatch(index int, container corev1.Container, newImage string) (patch []patchOperation) {
 	patch = []patchOperation{
 		{
 			Op:    "add",
@@ -43,13 +43,13 @@ func (whsvr *WebhookServer) generatePatch(index int, container corev1.Container,
 	return patch
 }
 
-func (whsvr *WebhookServer) updateMirrors(newconfig map[string]string) {
+func (whsvr *webhookServer) updateMirrors(newconfig map[string]string) {
 	log.Debug("Callback called, updating mirrors config")
 
 	whsvr.mirrorsConfig = newconfig
 }
 
-func (whsvr *WebhookServer) mutate(ar *admissionv1.AdmissionReview) *admissionv1.AdmissionResponse {
+func (whsvr *webhookServer) mutate(ar *admissionv1.AdmissionReview) *admissionv1.AdmissionResponse {
 	log.Debugf("Mutate called: %v", whsvr.mirrorsConfig)
 
 	var pod corev1.Pod
@@ -139,7 +139,7 @@ func (whsvr *WebhookServer) mutate(ar *admissionv1.AdmissionReview) *admissionv1
 }
 
 // Serve method for webhook server.
-func (whsvr *WebhookServer) serve(w http.ResponseWriter, r *http.Request) {
+func (whsvr *webhookServer) serve(w http.ResponseWriter, r *http.Request) {
 	var body []byte
 
 	var (
