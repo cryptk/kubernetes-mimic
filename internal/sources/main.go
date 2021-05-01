@@ -9,20 +9,24 @@ import (
 	"github.com/spf13/viper"
 )
 
+// Certificator provides a source to fetch TLS certificates.
 type Certificator interface {
 	Certificates() (tls.Certificate, error)
 }
 
+// Mirrorer ensures that a source can provide a mirror configuration.
 type Mirrorer interface {
 	Mirrors() map[string]string
 }
 
+// WatchingMirrorer is a source that can receive updates to it's mirror configuration without a restart of the application.
 type WatchingMirrorer interface {
 	Mirrorer
 	WatchMirrors(func()) error
 	Stop() error
 }
 
+// Sources maintains one or more sources of image mirrors.
 type Sources struct {
 	mirrors      map[string]Mirrorer
 	watchers     map[string]WatchingMirrorer
@@ -31,6 +35,7 @@ type Sources struct {
 	newMirrorsCB func(map[string]string)
 }
 
+// New configures a new mimic Source engine.
 func New() (sources *Sources, err error) {
 	sources = &Sources{
 		mirrors:  make(map[string]Mirrorer),
@@ -61,14 +66,17 @@ func New() (sources *Sources, err error) {
 	return sources, nil
 }
 
+// AddMirrorer adds a new mirror source to the sources engine.
 func (sources *Sources) AddMirrorer(name string, source Mirrorer) {
 	sources.mirrors[name] = source
 }
 
+// AddWatcher adds a new watcher to the sources engine.
 func (sources *Sources) AddWatcher(name string, source WatchingMirrorer) {
 	sources.watchers[name] = source
 }
 
+// Certificates retrieves TLS certificates from the configured certificate source.
 func (sources *Sources) Certificates() tls.Certificate {
 	if sources.certificator == nil {
 		log.Fatal("Unable to retrieve certificates, no certificate source configured")
@@ -84,6 +92,7 @@ func (sources *Sources) Certificates() tls.Certificate {
 	return certs
 }
 
+// Mirrors gathers the map of all mirrors from all configured sources.
 func (sources *Sources) Mirrors() (mirrors map[string]string) {
 	mirrors = make(map[string]string)
 	for _, mirror := range sources.mirrors {
@@ -99,6 +108,7 @@ func (sources *Sources) updateWebhookMirrors() {
 	sources.newMirrorsCB(sources.Mirrors())
 }
 
+// Watch enables the source watch to be notified of mirror configuration changes without restarting the application.
 func (sources *Sources) Watch(cb func(map[string]string)) {
 	sources.newMirrorsCB = cb
 	for name, source := range sources.watchers {
@@ -110,6 +120,7 @@ func (sources *Sources) Watch(cb func(map[string]string)) {
 	}
 }
 
+// Stop instructs all WatchingMirrorers to stop their watch processes, usually in preparation for an application halt.
 func (sources *Sources) Stop() {
 	for name, source := range sources.watchers {
 		log.Infof("Stopping watch on source %s", name)
