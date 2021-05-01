@@ -7,18 +7,28 @@ import (
 	"github.com/spf13/viper"
 )
 
-func initConfig() {
-	viper.SetEnvPrefix("mimiccfg")
+func configDefaults() {
+	viper.SetEnvPrefix("mimic")
 	viper.AutomaticEnv()
 
+	// Kubernetes source configuration options
+	viper.SetDefault("kubernetes_enabled", true)
+	viper.SetDefault("kubernetes_namespace", "mimic")
+	viper.SetDefault("kubernetes_certsecret", "mimic-certs")
+	viper.SetDefault("kubernetes_configmap", "mimic-mirrors")
+	viper.SetDefault("kubernetes_watch", true)
+
+	// Certificate source
+	viper.SetDefault("certificate_source", "kubernetes")
+
+	// Web server options
 	viper.SetDefault("listenport", 8443)
 	viper.SetDefault("listenhost", "0.0.0.0")
-	viper.SetDefault("certSecretName", "mimic-certs")
-	viper.SetDefault("mirrorsConfigMapName", "mimic-mirrors")
-	viper.SetDefault("watchmirrorsconfig", true)
-	viper.SetDefault("namespace", "")
+
+	// Generic options
 	viper.SetDefault("loglevel", "info")
 	viper.SetDefault("logformat", "text")
+	viper.SetDefault("watchmirrors", true)
 
 	switch viper.GetString("logformat") {
 	case "text":
