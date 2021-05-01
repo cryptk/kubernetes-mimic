@@ -32,7 +32,6 @@ type Sources struct {
 }
 
 func New() (sources *Sources, err error) {
-
 	sources = &Sources{
 		mirrors:  make(map[string]Mirrorer),
 		watchers: make(map[string]WatchingMirrorer),
@@ -47,10 +46,13 @@ func New() (sources *Sources, err error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to initialize Kubernetes Client: %w", err)
 		}
+
 		sources.AddMirrorer("kubernetes", k8s)
+
 		if viper.GetBool("kubernetes_watch") {
 			sources.AddWatcher("kubernetes", k8s)
 		}
+
 		if viper.GetString("certificate_source") == "kubernetes" {
 			sources.certificator = k8s
 		}
@@ -71,11 +73,14 @@ func (sources *Sources) Certificates() tls.Certificate {
 	if sources.certificator == nil {
 		log.Fatal("Unable to retrieve certificates, no certificate source configured")
 	}
+
 	certs, err := sources.certificator.Certificates()
 	if err != nil {
 		log.WithError(err).Fatal("Unable to fetch certificates")
 	}
+
 	log.Debug("TLS certificates retrieved")
+
 	return certs
 }
 
@@ -86,6 +91,7 @@ func (sources *Sources) Mirrors() (mirrors map[string]string) {
 			mirrors[k] = v
 		}
 	}
+
 	return mirrors
 }
 
@@ -99,6 +105,7 @@ func (sources *Sources) Watch(cb func(map[string]string)) {
 		if err := source.WatchMirrors(sources.updateWebhookMirrors); err != nil {
 			log.WithError(err).Errorf("failed to initialize watch on mirror source %s", name)
 		}
+
 		log.Infof("Watch on source %s started", name)
 	}
 }
@@ -106,6 +113,9 @@ func (sources *Sources) Watch(cb func(map[string]string)) {
 func (sources *Sources) Stop() {
 	for name, source := range sources.watchers {
 		log.Infof("Stopping watch on source %s", name)
-		source.Stop()
+
+		if err := source.Stop(); err != nil {
+			log.WithError(err).Errorf("Failure while stopping watch on source %s", name)
+		}
 	}
 }

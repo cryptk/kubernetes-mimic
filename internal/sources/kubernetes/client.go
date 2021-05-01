@@ -65,11 +65,14 @@ func (client *Client) Certificates() (tls.Certificate, error) {
 	if client.certificates != nil {
 		return *client.certificates, nil
 	}
+
 	certs, err := client.fetchCertificates()
 	if err != nil {
 		return tls.Certificate{}, err
 	}
+
 	client.certificates = certs
+
 	return *client.certificates, nil
 }
 
@@ -132,8 +135,6 @@ func (client *Client) WatchMirrors(cb func()) error {
 
 			client.mirrors = configmap
 
-			// TODO: Currently this would cause mirrors from other sources to be lost
-			// This needs to trigger the webhook to pull new mirrors from the sources interface rather than
 			cb()
 		}
 	}()
