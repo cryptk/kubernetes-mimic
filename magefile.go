@@ -4,6 +4,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/magefile/mage/mg"
@@ -17,10 +18,10 @@ func Run() {
 // This builds the project.
 // This is a multi-line description.
 func Build() error {
-	if err := sh.RunV("go", "mod", "download"); err != nil {
+	if err := sh.Run("go", "mod", "download"); err != nil {
 		return err
 	}
-	return sh.RunV("go", "build", "-o", "mimic", "./cmd")
+	return sh.Run("go", "build", "-o", "mimic", "./cmd")
 }
 
 func Clean() error {
@@ -64,6 +65,14 @@ func generateCerts() {
 	sh.Run("./deploy/webhook-create-signed-cert.sh", "--service", "mimic", "--secret", "mimic-certs", "--namespace", "mimic")
 	sh.Run("./deploy/webhook-patch-ca-bundle.sh", "./deploy/templates/mutatingwebhookconfiguration.yaml", "./deploy/mutatingwebhookconfiguration-cabundle.yaml")
 	fmt.Println("[Generate Certs] Complete")
+}
+
+func Lint() error {
+	pwd, err := os.Getwd()
+	if err != nil {
+		return err
+	}
+	return sh.RunV("docker", "run", "--rm", "-v", fmt.Sprintf("%s:/app", pwd), "-w", "/app", "golangci/golangci-lint:v1.39.0", "golangci-lint", "run")
 }
 
 // Deploy Mimic into a Minikube cluster.  Assumes that

@@ -10,43 +10,36 @@ import (
 	"os/signal"
 	"syscall"
 
-	k8s "github.com/cryptk/kubernetes-mimic/internal/kubernetes"
+	"github.com/cryptk/kubernetes-mimic/internal/sources"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )
 
 func main() {
-	initConfig()
+	configDefaults()
 
-	kclient, err := k8s.NewClient(
-		viper.GetString("namespace"),
-		viper.GetString("certSecretName"),
-		viper.GetString("mirrorsConfigMapName"),
-		viper.GetBool("watchmirrorsconfig"),
-	)
+	sources, err := sources.New()
 	if err != nil {
-		log.WithError(err).Fatal("Failed to initialize the kubernetes client")
+		log.WithError(err).Fatal("Failed to initialize mirror sources")
 	}
 
-	x509KeyPair := kclient.GetCertificates()
-	mirrorsConfig := kclient.GetMirrorsConfig()
-
 	whsrvr := &WebhookServer{
-		mirrorsConfig: mirrorsConfig,
+		mirrorsConfig: sources.Mirrors(),
 		server: &http.Server{
 			Addr: fmt.Sprintf("%s:%d", viper.GetString("listenhost"), viper.GetInt("listenport")),
 			TLSConfig: &tls.Config{
-				Certificates: []tls.Certificate{x509KeyPair},
+				Certificates: []tls.Certificate{sources.Certificates()},
 				MinVersion:   tls.VersionTLS12,
 			},
 		},
 	}
 
-	kclient.SetMirrorsCallback(whsrvr.updateMirrorsConfig)
+	if viper.GetBool("watchmirrors") {
+		sources.Watch(whsrvr.updateMirrors)
+	}
 
 	log.Info("Webhook Server initialized")
 
-	http.HandleFunc("/ping", pong)
 	http.HandleFunc("/mutate", whsrvr.serve)
 
 	go func() {
@@ -70,8 +63,4 @@ func main() {
 	if err != nil {
 		log.WithError(err).Fatal("web server failed to shut down... lets PANIC instead!")
 	}
-}
-
-func pong(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprint(w, "pong")
 }

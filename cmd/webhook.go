@@ -17,7 +17,7 @@ import (
 
 type WebhookServer struct {
 	server        *http.Server
-	mirrorsConfig *map[string]string
+	mirrorsConfig map[string]string
 }
 
 type patchOperation struct {
@@ -43,7 +43,7 @@ func (whsvr *WebhookServer) generatePatch(index int, container corev1.Container,
 	return patch
 }
 
-func (whsvr *WebhookServer) updateMirrorsConfig(newconfig *map[string]string) {
+func (whsvr *WebhookServer) updateMirrors(newconfig map[string]string) {
 	log.Debug("Callback called, updating mirrors config")
 
 	whsvr.mirrorsConfig = newconfig
@@ -91,7 +91,7 @@ func (whsvr *WebhookServer) mutate(ar *admissionv1.AdmissionReview) *admissionv1
 			"tag":        parsedImage.Tag(),
 		}).Debug("Image name parsed")
 
-		mirror, ok := (*whsvr.mirrorsConfig)[parsedImage.Registry()]
+		mirror, ok := whsvr.mirrorsConfig[parsedImage.Registry()]
 		if !ok {
 			log.WithField("remote", parsedImage.Remote()).Info("No mirror configured for image")
 

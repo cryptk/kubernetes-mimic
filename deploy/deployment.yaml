@@ -30,7 +30,7 @@ spec:
           - containerPort: 8443
             name: api
         env:
-          - name: MIMICCFG_LOGLEVEL
+          - name: MIMIC_LOGLEVEL
             value: debug
         resources:
           requests:
