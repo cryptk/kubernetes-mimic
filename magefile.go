@@ -69,8 +69,8 @@ func ensureMinikube() error {
 func generateCerts() {
 	fmt.Println("[Generate Certs] Starting")
 	fmt.Println("[Generate Certs] Ensuring certificates are present on cluster")
-	sh.Run("./deploy/webhook-create-signed-cert.sh", "--service", "mimic", "--secret", "mimic-certs", "--namespace", "mimic")
-	sh.Run("./deploy/webhook-patch-ca-bundle.sh", "./deploy/templates/mutatingwebhookconfiguration.yaml", "./deploy/mutatingwebhookconfiguration-cabundle.yaml")
+	sh.Run("./deploy/scripts/webhook-create-signed-cert.sh", "--service", "mimic", "--secret", "mimic-certs", "--namespace", "mimic")
+	sh.Run("./deploy/scripts/webhook-patch-ca-bundle.sh", "./deploy/manifests/templates/mutatingwebhookconfiguration.yaml", "./deploy/mutatingwebhookconfiguration-cabundle.yaml")
 	fmt.Println("[Generate Certs] Complete")
 }
 
@@ -88,11 +88,11 @@ func MKDeploy() error {
 	mg.Deps(ensureMinikube)
 
 	fmt.Println("[Minikube Deploy] Deploying Kubernetes resources")
-	if err := sh.Run("minikube", "kubectl", "--", "apply", "-f", "./deploy/namespace.yaml"); err != nil {
+	if err := sh.Run("minikube", "kubectl", "--", "apply", "-f", "./deploy/manifests/namespace.yaml"); err != nil {
 		return err
 	}
 	mg.Deps(generateCerts)
-	sh.Run("minikube", "kubectl", "--", "apply", "-f", "./deploy")
+	sh.Run("minikube", "kubectl", "--", "apply", "-f", "./deploy/manifests")
 
 	fmt.Println("[Minikube Deploy] Complete")
 	return nil

@@ -19,9 +19,9 @@ func configDefaults() {
 	viper.SetDefault("kubernetes_watch", true)
 
 	// Harbor source configuration options
-	viper.SetDefault("enable_harbor", false)
+	viper.SetDefault("harbor_enabled", false)
 	viper.SetDefault("harbor_api_host", "")
-	viper.SetDefault("harbor_harbor_registryurl", "") // Leaving this blank will autodiscover from the Harbor API
+	viper.SetDefault("harbor_registryurl", "") // Leaving this blank will autodiscover from the Harbor API
 	viper.SetDefault("harbor_robot_username", "")
 	viper.SetDefault("harbor_robot_password", "")
 
@@ -47,12 +47,20 @@ func configDefaults() {
 	}
 
 	switch viper.GetString("loglevel") {
+	case "trace":
+		log.SetLevel(log.TraceLevel)
+	case "debug":
+		log.SetLevel(log.DebugLevel)
 	case "info":
 		log.SetLevel(log.InfoLevel)
 	case "warn":
 		log.SetLevel(log.WarnLevel)
-	case "debug":
-		log.SetLevel(log.DebugLevel)
+	case "error":
+		log.SetLevel(log.ErrorLevel)
+	case "fatal":
+		log.SetLevel(log.FatalLevel)
+	case "panic":
+		log.SetLevel(log.PanicLevel)
 	default:
 		log.SetLevel(log.InfoLevel)
 	}
