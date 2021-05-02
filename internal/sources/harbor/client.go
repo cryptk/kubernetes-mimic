@@ -23,6 +23,7 @@ type Client struct {
 	mirrors     map[string]string
 }
 
+// New configures a new Harbor Client.
 func New() (*Client, error) {
 	transport := httptransport.New(viper.GetString("harbor_api_host"), "/api/v2.0", []string{"http"})
 	harborClient := apiclient.New(transport, strfmt.Default)
