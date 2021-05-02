@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"fmt"
 
+	harborclient "github.com/cryptk/kubernetes-mimic/internal/sources/harbor"
 	k8sclient "github.com/cryptk/kubernetes-mimic/internal/sources/kubernetes"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
@@ -42,7 +43,12 @@ func New() (sources *Sources, err error) {
 		watchers: make(map[string]WatchingMirrorer),
 	}
 
-	if validateConfigSet("kubernetes_enabled", []string{"kubernetes_namespace", "kubernetes_certsecret", "kubernetes_configmap"}) {
+	k8sEnabled, err := validateConfigSet("kubernetes_enabled", []string{"kubernetes_certsecret", "kubernetes_configmap"})
+	if err != nil {
+		return nil, err
+	}
+
+	if k8sEnabled {
 		k8s, err := k8sclient.New(
 			viper.GetString("kubernetes_namespace"),
 			viper.GetString("kubernetes_certsecret"),
@@ -61,6 +67,20 @@ func New() (sources *Sources, err error) {
 		if viper.GetString("certificate_source") == "kubernetes" {
 			sources.certificator = k8s
 		}
+	}
+
+	harborEnabled, err := validateConfigSet("harbor_enabled", []string{"harbor_api_host", "harbor_robot_username", "harbor_robot_password"})
+	if err != nil {
+		return nil, err
+	}
+
+	if harborEnabled {
+		harbor, err := harborclient.New()
+		if err != nil {
+			return nil, fmt.Errorf("failed to initialize Harbor Client: %w", err)
+		}
+
+		sources.AddMirrorer("harbor", harbor)
 	}
 
 	return sources, nil

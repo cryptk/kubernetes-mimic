@@ -1,17 +1,21 @@
 package sources
 
-import "github.com/spf13/viper"
+import (
+	"fmt"
 
-func validateConfigSet(flag string, configs []string) bool {
+	"github.com/spf13/viper"
+)
+
+func validateConfigSet(flag string, configs []string) (bool, error) {
 	if !viper.GetBool(flag) {
-		return false
+		return false, nil
 	}
 
 	for _, value := range configs {
-		if !viper.IsSet(value) {
-			return false
+		if !viper.IsSet(value) || viper.GetString(value) == "" {
+			return false, fmt.Errorf("invalid configuration detected, %s is set but %s is not", flag, value)
 		}
 	}
 
-	return true
+	return true, nil
 }

@@ -26,13 +26,8 @@ type patchOperation struct {
 	Value interface{} `json:"value,omitempty"`
 }
 
-func (whsvr *webhookServer) generatePatch(index int, container corev1.Container, newImage string) (patch []patchOperation) {
+func (whsvr *webhookServer) generatePatch(index int, newImage string) (patch []patchOperation) {
 	patch = []patchOperation{
-		{
-			Op:    "add",
-			Path:  fmt.Sprintf("/metadata/annotations/kubernetes-mimic.io~1%s-original-image", container.Name),
-			Value: container.Image,
-		},
 		{
 			Op:    "replace",
 			Path:  fmt.Sprintf("/spec/containers/%d/image", index),
@@ -104,7 +99,7 @@ func (whsvr *webhookServer) mutate(ar *admissionv1.AdmissionReview) *admissionv1
 		newImage := fmt.Sprintf("%s/%s", mirror, parsedImage.Name())
 		log.WithField("image", newImage).Info("Mirrored located")
 
-		patches = append(patches, whsvr.generatePatch(i, container, newImage)...)
+		patches = append(patches, whsvr.generatePatch(i, newImage)...)
 	}
 
 	log.WithFields(log.Fields{

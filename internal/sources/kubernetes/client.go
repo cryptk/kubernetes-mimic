@@ -13,7 +13,7 @@ import (
 	"k8s.io/client-go/rest"
 )
 
-// Client handles interactions with the kubernetes API.
+// Client handles interactions with the Kubernetes API.
 type Client struct {
 	namespace        string
 	certSecret       string
