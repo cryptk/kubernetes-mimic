@@ -11,7 +11,7 @@ This project is still in it's early stages, and as such, documentation is less t
 
 Currently Mimic can only integrate with [Harbor](https://goharbor.io/) for autodiscovery of [Proxy Cache](https://goharbor.io/docs/2.1.0/administration/configure-proxy-cache/) projects.  When this integration is enabled, Mimic will watch for pods being created with an Image that is pulled from a source that is also available as a public Proxy Cache in Harbor and will update the Image source as necessary to pull the image from the Harbor cache instead.
 
-There are plans to also support Artifactory.  Any other desired integrations should be requested by [opening an issue](cryptk/kubernetes-mimic/issues)
+There are plans to also support Artifactory.  Any other desired integrations should be requested by [opening an issue](https://github.com/cryptk/kubernetes-mimic/issues)
 
 ## Image building
 
