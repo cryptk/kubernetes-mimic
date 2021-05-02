@@ -13,10 +13,17 @@ func configDefaults() {
 
 	// Kubernetes source configuration options
 	viper.SetDefault("kubernetes_enabled", true)
-	viper.SetDefault("kubernetes_namespace", "mimic")
+	viper.SetDefault("kubernetes_namespace", "") // Leaving this blank will autodiscover from the Kubernetes environment
 	viper.SetDefault("kubernetes_certsecret", "mimic-certs")
 	viper.SetDefault("kubernetes_configmap", "mimic-mirrors")
 	viper.SetDefault("kubernetes_watch", true)
+
+	// Harbor source configuration options
+	viper.SetDefault("enable_harbor", false)
+	viper.SetDefault("harbor_api_host", "")
+	viper.SetDefault("harbor_harbor_registryurl", "") // Leaving this blank will autodiscover from the Harbor API
+	viper.SetDefault("harbor_robot_username", "")
+	viper.SetDefault("harbor_robot_password", "")
 
 	// Certificate source
 	viper.SetDefault("certificate_source", "kubernetes")
