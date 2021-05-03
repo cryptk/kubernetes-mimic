@@ -68,7 +68,7 @@ Mimic accepts it's configuration via environment variables.
 
 If you have [docker](https://docs.docker.com/get-docker/) installed, you can deploy Mimic into a KiND cluster pretty easily with
 
-`go run mage.go deploy update`
+`go run mage.go deploy`
 
 and you can then clean everything up with:
 
@@ -76,7 +76,7 @@ and you can then clean everything up with:
 
 if you install [mage](https://magefile.org/) then you can execute the targets directly with:
 
-`mage deploy update` and `mage clean`
+`mage deploy` and `mage clean`
 
 Feel free to check out the other targets with:
 

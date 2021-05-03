@@ -74,7 +74,7 @@ func DockerTag(tag string) error {
 	return nil
 }
 
-// Deploy Mimic into a KiND cluster.  Assumes that
+// Deploy deploys all of the required Kubernetes manifests for Mimic into a KiND cluster.
 func Deploy() error {
 	mg.Deps(ensureKubectl, ensureCluster, ensureNamespace, generateCerts)
 
@@ -83,11 +83,13 @@ func Deploy() error {
 		return err
 	}
 
+	mg.Deps(Update)
+
 	fmt.Println("[Deploy] Complete")
 	return nil
 }
 
-// Update Mimic into a KiND cluster.
+// Update deploys a newly built docker image of Mimic into a KiND cluster.
 func Update() error {
 	fmt.Println("[Update] Starting")
 	tag := fmt.Sprint(time.Now().Unix())
@@ -102,32 +104,35 @@ func Update() error {
 	return nil
 }
 
-// TODO: We need an ensureHelm to be able to support automated deployment of Harbor
-// TODO: Ideally we would change the Helm home to somewhere inside ./build so we don't trash up the users home dir
-// func DeployHarbor() error {
-// 	mg.Deps(ensureCluster, ensureHelm)
-// 	fmt.Println("[Harbor] Starting")
-// 	envs := map[string]string{
-// 		"KUBECONFIG": "./build/tmp/kubeconfig",
-// 	}
-// 	if err := sh.RunWith(envs, "helm", "repo", "add", "harbor", "https://helm.goharbor.io"); err != nil {
-// 		return err
-// 	}
-// 	if err := sh.RunWith(envs, "helm", "upgrade", "--install", "--create-namespace", "-n", "mimic-harbor",
-// 		"--set", "expose.tls.enabled=false",
-// 		"--set", "expose.type=clusterIP",
-// 		"--set", "expose.clusterIP.name=localhost",
-// 		"--set", "externalURL=http://localhost:8080",
-// 		"mimic-harbor", "harbor/harbor"); err != nil {
-// 		return err
-// 	}
-// 	fmt.Println("[Harbor] Complete")
-// 	return nil
-// }
+// DeployHarbor will deploy the Harbor Helm Chart into the KiND cluster for testing the Harbor integration.
+func DeployHarbor() error {
+	mg.Deps(ensureCluster, ensureHelm)
+	fmt.Println("[Harbor] Starting")
+	envs := map[string]string{
+		"KUBECONFIG":       "./build/tmp/kubeconfig",
+		"HELM_CACHE_HOME":  "./build/tmp/helm_home/cache",
+		"HELM_CONFIG_HOME": "./build/tmp/helm_home/config",
+		"HELM_DATA_HOME":   "./build/tmp/helm_home/data",
+		"HELM_KUBECONTEXT": fmt.Sprintf("kind-mimic-%s", K8S_VERSION),
+	}
+	if err := sh.RunWithV(envs, "./build/tmp/helm", "repo", "add", "harbor", "https://helm.goharbor.io"); err != nil {
+		return err
+	}
+	if err := sh.RunWithV(envs, "./build/tmp/helm", "upgrade", "--install", "--create-namespace", "-n", "harbor",
+		"--set", "expose.tls.enabled=false",
+		"--set", "expose.type=clusterIP",
+		"--set", "expose.clusterIP.name=localhost",
+		"--set", "externalURL=http://localhost:8080",
+		"mimic-harbor", "harbor/harbor"); err != nil {
+		return err
+	}
+	fmt.Println("[Harbor] Complete")
+	return nil
+}
 
 // GenerateHarborSwagger uses go-swagger to generate Harbor API bindings.
 func GenerateHarborSwagger() error {
-	// mg.Deps(ensureMinikube)
+	mg.Deps(ensureDocker)
 
 	if err := os.MkdirAll("./build/tmp", fs.FileMode(0775)); err != nil {
 		return err
@@ -213,6 +218,23 @@ func ensureKubectl() error {
 	return nil
 }
 
+func ensureHelm() error {
+	if _, err := os.Stat("./build/tmp/helm"); os.IsNotExist(err) {
+		fmt.Println("Helm not present in build directory, fetching")
+		if err := os.MkdirAll("./build/tmp", fs.FileMode(0775)); err != nil {
+			return err
+		}
+		if err := downloadFile("./build/tmp/helm.tgz", "https://get.helm.sh/helm-v3.5.4-linux-amd64.tar.gz"); err != nil {
+			return err
+		}
+		if err := sh.Run("tar", "xvf", "./build/tmp/helm.tgz", "--strip-components=1", "-C", "./build/tmp", "linux-amd64/helm"); err != nil {
+			return err
+		}
+		fmt.Println("helm fetched")
+	}
+	return nil
+}
+
 func ensureKind() error {
 	mg.Deps(ensureDocker)
 	if _, err := os.Stat("./build/tmp/kind"); os.IsNotExist(err) {
@@ -259,6 +281,9 @@ func ensureCluster() error {
 		return err
 	}
 	defer file.Close()
+	if err := file.Chmod(fs.FileMode(0600)); err != nil {
+		return err
+	}
 	if _, err := file.WriteString(kubeconfig); err != nil {
 		return err
 	}
