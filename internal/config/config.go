@@ -10,7 +10,7 @@ import (
 	"github.com/spf13/viper"
 )
 
-// Defaults configures all of the default values for Mimics configuration
+// Defaults configures all of the default values for Mimics configuration.
 func Defaults() {
 	viper.SetEnvPrefix("mimic")
 	viper.AutomaticEnv()
