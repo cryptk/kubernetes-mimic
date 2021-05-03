@@ -1,4 +1,7 @@
-package main
+// Package config manages the configuration options for Mimic.
+// Currently it only has a function to set the configuration defaults, but eventually it will also perform configuration validation
+// to check for problems such as the harbor integration being enabled, but the harbor_api_host not being set.
+package config
 
 import (
 	"os"
@@ -7,7 +10,8 @@ import (
 	"github.com/spf13/viper"
 )
 
-func configDefaults() {
+// Defaults configures all of the default values for Mimics configuration
+func Defaults() {
 	viper.SetEnvPrefix("mimic")
 	viper.AutomaticEnv()
 

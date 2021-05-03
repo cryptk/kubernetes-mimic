@@ -10,13 +10,14 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/cryptk/kubernetes-mimic/internal/config"
 	"github.com/cryptk/kubernetes-mimic/internal/sources"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )
 
 func main() {
-	configDefaults()
+	config.Defaults()
 
 	sources, err := sources.New()
 	if err != nil {

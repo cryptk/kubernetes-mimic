@@ -29,11 +29,11 @@ The process is as follows:
 
 `kubectl apply -f ./deploy/manifests/namespace`
 
-2. Generate SSL certificates used for communication between the kubernetes API layer and the webhook:
+2. Generate SSL certificates used for communication between the kubernetes API layer and the webhook. Please note that this script presently has no provisions for setting the context or kubeconfig location:
 
 `./deploy/scripts/webhook-create-signed-cert.sh --service mimic --secret mimic-certs --namespace mimic`
 
-3. Add the CA Bundle for the generated certificate to the mutating webhook configuration
+3. Add the CA Bundle for the generated certificate to the mutating webhook configuration.  Please note that this script presently has no provisions for setting the context or kubeconfig location:
 
 `./deploy/scripts/webhook-patch-ca-bundle.sh ./deploy/manifests/templates/mutatingwebhookconfiguration.yaml ./deploy/manifests/mutatingwebhookconfiguration-cabundle.yaml`
 
@@ -63,3 +63,21 @@ Mimic accepts it's configuration via environment variables.
 | MIMIC_HARBOR_REGISTRYURL | "" | Hostname that Harbor serves it's repository mirrors from.  If this is left blank, Mimic will attempt to autodiscover this from the Harbor API |
 | MIMIC_HARBOR_ROBOT_USERNAME | "" | Robot account username from Harbor.  Needed to autodiscover the Registry URL from the Harbor API |
 | MIMIC_HARBOR_ROBOT_PASSWORD | "" | Robot account password from Harbor.  Needed to autodiscover the Registry URL from the Harbor API |
+
+## Testing
+
+If you have [docker](https://docs.docker.com/get-docker/) installed, you can deploy Mimic into a KiND cluster pretty easily with
+
+`go run mage.go deploy update`
+
+and you can then clean everything up with:
+
+`go run mage.go clean`
+
+if you install [mage](https://magefile.org/) then you can execute the targets directly with:
+
+`mage deploy update` and `mage clean`
+
+Feel free to check out the other targets with:
+
+`mage -l`
