@@ -115,7 +115,7 @@ done
 # approve and fetch the signed certificate
 kubectl certificate approve ${csrName}
 # verify certificate has been signed
-for _ in $(seq 10); do
+for _ in $(seq 20); do
     serverCert=$(kubectl get csr ${csrName} -o jsonpath='{.status.certificate}')
     if [[ ${serverCert} != '' ]]; then
         break
@@ -133,5 +133,5 @@ echo "${serverCert}" | openssl base64 -d -A -out "${tmpdir}"/server-cert.pem
 kubectl create secret generic ${secret} \
         --from-file=key.pem="${tmpdir}"/server-key.pem \
         --from-file=cert.pem="${tmpdir}"/server-cert.pem \
-        --dry-run -o yaml |
+        --dry-run=client -o yaml |
     kubectl -n ${namespace} apply -f -

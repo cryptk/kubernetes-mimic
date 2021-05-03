@@ -15,5 +15,6 @@
 # vendor/
 
 build
+deploy/manifests/mutatingwebhookconfiguration-cabundle.yaml
 
 mimic
