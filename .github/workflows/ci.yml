@@ -27,3 +27,21 @@ jobs:
 
       - name: Run golangci-lint
         uses: golangci/golangci-lint-action@v2.5.2
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Set up Go
+      uses: actions/setup-go@v2
+      with:
+        go-version: 1.16.3
+
+    # No need to build the project yet...
+    # - name: Build
+    #   run: go build -v ./...
+
+    - name: Test
+      # We exclude 'internal/harbor' as it is generated via go-swagger... not really our code...
+      run: go list ./... | grep -v 'internal/harbor' | xargs go test -v -cover
