@@ -11,6 +11,7 @@ func Test_validateConfigSet(t *testing.T) {
 		flag    string
 		configs []string
 	}
+
 	tests := []struct {
 		name    string
 		args    args
