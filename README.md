@@ -21,7 +21,7 @@ Mimic can be built into a docker image using all of the normal techniques.  Assu
 
 ## Deployment
 
-Currently the deployment is manual, and there are example manifests in the [manifests folder](deploy/manifests).  As the project matures, the deployment of Mimic will be handled via Helm (GH-14).
+Currently the deployment is manual, and there are example manifests in the [manifests folder](deploy/manifests).  As the project matures, the deployment of Mimic will be handled via Helm ( [#14](cryptk/kubernetes-mimic/issues/14) ).
 
 The process is as follows:
 
