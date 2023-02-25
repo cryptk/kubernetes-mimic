@@ -15,7 +15,7 @@ require (
 	github.com/novln/docker-parser v1.0.0
 	github.com/sirupsen/logrus v1.8.1
 	github.com/spf13/viper v1.7.1
-	golang.org/x/net v0.0.0-20210502030024-e5908800b52b // indirect
+	golang.org/x/net v0.7.0 // indirect
 	k8s.io/api v0.21.0
 	k8s.io/apimachinery v0.21.0
 	k8s.io/client-go v0.21.0
